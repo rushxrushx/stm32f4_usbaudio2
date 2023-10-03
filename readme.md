@@ -1,13 +1,17 @@
-#stm32f205+usb3300=  
-#cheapest usb audio class2 HS async with ext clock input.  
 
+# Cheapest STM32F2 Asynchronous USB Audio2  
+### Using stm32f205+usb3300,Support external audio master clock   
+   
+![Image text](https://raw.github.com/rushxrushx/repositpry/master/stm32f4_usbaudio2/image/testpcb.jpg)  
+  
 compiler: KEIL MDK-ARM 4.74.0.22   
-
-##v0.1   
+note: windows PC need uac2 asio driver  
+  
+### v0.1   
 20231002  
 inital buggy release  
-
-##v0.2  
+  
+### v0.2  
 20231003  
 fix: outEp descripter no async  
 fix: async ep1 data TX to PC,fix missing fb,now fb working.  
@@ -15,3 +19,7 @@ fix: sample frequency setup(data receive must in EP0Rxready)
 add: reset i2s engine when enter playing altset  
 fix: some var must add 'Voliate'  
 add: UART log ring buffer system,prevent 'while' when print logs.  
+  
+thanks to:  
+uac2 code from https://github.com/coflery/STM32F4_USB_SoundCard  
+  
