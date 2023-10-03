@@ -16,6 +16,7 @@ int main(void)
 	u32 loscount=0;
 	
 	Board_Init();					//初始化LED 
+	LEDON;
 	SEL_NONE;
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	uart_init(115200);		//初始化串口波特率为115200
@@ -24,7 +25,7 @@ int main(void)
 	APWR_EN;
 		
 	printf("\033[2J");// 清除屏幕	
-	printf("USB waiting... \r\n");//提示正在建立连接 	
+	printf("\r\nmain.c ");printf(__DATE__);printf(__TIME__);printf("\r\n");	
 	    
 
 #ifdef USE_USB_OTG_FS  		
@@ -40,24 +41,27 @@ int main(void)
 	{  
 		if(Divece_STA!=bDeviceState)//状态改变了
 		{
-			if(bDeviceState==1)
-			{printf("USB Connected.\r\n");//提示USB连接已经建立
+			Divece_STA=bDeviceState;
+			
+			if(bDeviceState!=0)
+			{
 			LED2_GRN;
 			}
 			else
-			{printf("USB DisConnected.\r\n");//提示USB连接失败
+			{
 			LED2_RED;
 			LEDOFF;
 			}
-			Divece_STA=bDeviceState;
 		}
 
 		if(alt_setting_now!=0)
 		{
+		LEDON;
 			cnt++;
-			if(cnt>50000)
+			if(cnt>500000)
 			{
 			cnt=0;
+			/*
 			// 隐藏光标
 			printf("%c[2K", 27);
 			printf("\033[?25l");
@@ -67,6 +71,7 @@ int main(void)
 			printf(",buf:%d",data_remain);
 			printf(",ov:%d",overrun_counter);
 			printf(",UD:%d",underrun_counter);
+			*/
 			los_cnt++;
 			if(los_cnt>1000){
 			los_cnt=0;
@@ -74,10 +79,10 @@ int main(void)
 			}
 			
 			}
-			if(fb_success<100){rx_incomplt=0;loscount=0;}//lost when start play is ignored.
-			if (overrun_counter| underrun_counter) {LED_RED;}//error LED mean out of buffer.
-			else if(rx_incomplt>loscount)	{LED_YEL;}//warn LED mean lost package.
-			else LEDON;
+			//if(fb_success<100){rx_incomplt=0;loscount=0;}//lost when start play is ignored.
+			//if (overrun_counter||underrun_counter) {LED_RED;}//error LED mean out of buffer.
+			//else if(rx_incomplt>loscount)	{LED_YEL;}//warn LED mean lost package.
+			//else LEDON;
 			
 		}
 		else

@@ -64,7 +64,7 @@
   */ 
 #define USBD_LANGID_STRING              0x409
 #define USBD_MANUFACTURER_STRING        "RUSH"
-#define USBD_SERIAL_STRING        __DATE__
+#define USBD_SERIAL_STRING        "0002"
 #define USBD_PRODUCT_FS_STRING          "FS USB"
 #define USBD_PRODUCT_HS_STRING          "HS USB"
 #define USBD_CONFIGURATION_FS_STRING    "AUDIO Config"

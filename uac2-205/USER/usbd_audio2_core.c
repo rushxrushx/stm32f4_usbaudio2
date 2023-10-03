@@ -52,12 +52,13 @@ u32 fb_incomplt=0;
 u32 rx_incomplt=0;
 s32 play_speed=0;
 u8 fb_buf[4];
-u8 alt_setting_now=0;
+vu8 alt_setting_now=0;
 u8 audioIsMute=0;
 u8 audioVol=100; 
 
 /* Main Buffer for Audio Control requests transfers and its relative variables */
 uint8_t  AudioCtl[64];
+uint8_t  AudioCtlReq = 0;
 uint8_t  AudioCtlCmd = 0;
 uint32_t AudioCtlLen = 0;
 uint8_t  AudioCtlCS  = 0;
@@ -141,7 +142,7 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
   AUDIO_INTERFACE_DESCRIPTOR_TYPE,      /* bDescriptorType */
   AUDIO_CONTROL_CLOCK_SOURCE,           /* bDescriptorSubtype */
   AUDIO_CLK_ID,                         /* bClockID */
-  0x03,                                 /* bmAttributes */
+  0x07,                                 /* bmAttributes */
   0x07,                                 /* bmControls TODO */
   0x00,                                 /* bAssocTerminal */
   0x00,                                 /* iClockSource */
@@ -262,7 +263,7 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
   AUDIO_20_STANDARD_ENDPOINT_DESC_SIZE, /* bLength */
   USB_ENDPOINT_DESCRIPTOR_TYPE,         /* bDescriptorType */
   AUDIO_OUT_EP,                         /* bEndpointAddress 3 out endpoint for Audio */
-  USB_ENDPOINT_TYPE_ADAPTIVE,           /* bmAttributes */
+  USB_ENDPOINT_TYPE_ASYNCHRONOUS,           /* bmAttributes */
   (200 + 0)&0xff, ((200 + 0)>>8)&0xff,     /* XXXX wMaxPacketSize in Bytes (Freq(Samples)*2(Stereo)*2(HalfWord)) */
   0x01,                                 /* bInterval */
   /* 07 byte*/
@@ -284,8 +285,8 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
     0x05,                           /* bDescriptorType: ENDPOINT */
     AUDIO_IN_EP,       /* bEndpointAddress (D3:0 - EP no. D6:4 - reserved 0. D7 - 0:out, 1:in) */
     0x11,                           /* bmAttributes (bitmap)  */ 
-    4, 0x0,               /* wMaxPacketSize 4 bytes */
-    0x02,                           /* bInterval */
+    4, 0,               /* wMaxPacketSize 4 bytes */
+    0x01,                           /* bInterval */
 	//added 7 bytes
 } ;
 
@@ -298,7 +299,7 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
   */ 
 
 //static uint32_t sUSBD_AUDIO_FREQ = USBD_AUDIO_FREQ;
-static uint32_t sAUDIO_OUT_PACKET = AUDIO_OUT_PACKET;
+//static uint32_t sAUDIO_OUT_PACKET = AUDIO_OUT_PACKET;
 
 
 //from nuc505
@@ -386,22 +387,13 @@ static uint8_t  usbd_audio_Init (void  *pdev,
                                  uint8_t cfgidx)
 {  
   /* Open EP OUT */
-  DCD_EP_Open(pdev,
-              AUDIO_OUT_EP,
-              sAUDIO_OUT_PACKET,
-              USB_OTG_EP_ISOC);
+//  DCD_EP_Open(pdev,AUDIO_OUT_EP,sAUDIO_OUT_PACKET,USB_OTG_EP_ISOC);
 
   /* Initialize the Audio output Hardware layer */
-//  if (AUDIO_OUT_fops.Init(sUSBD_AUDIO_FREQ, DEFAULT_VOLUME, 0) != USBD_OK)
-//  {
-//    return USBD_FAIL;
-//  }
+
     
   /* Prepare Out endpoint to receive audio data */
-  DCD_EP_PrepareRx(pdev,
-                   AUDIO_OUT_EP,
-                   (uint8_t*)IsocOutBuff,                        
-                   sAUDIO_OUT_PACKET);
+//  DCD_EP_PrepareRx(pdev,AUDIO_OUT_EP,(uint8_t*)IsocOutBuff,sAUDIO_OUT_PACKET);
   
   return USBD_OK;
 }
@@ -416,13 +408,10 @@ static uint8_t  usbd_audio_Init (void  *pdev,
 static uint8_t  usbd_audio_DeInit (void  *pdev, 
                                    uint8_t cfgidx)
 { 
-  DCD_EP_Close (pdev , AUDIO_OUT_EP);
+//  DCD_EP_Close (pdev , AUDIO_OUT_EP);
   
   /* DeInitialize the Audio output Hardware layer */
-//  if (AUDIO_OUT_fops.DeInit(0) != USBD_OK)
-//  {
-//    return USBD_FAIL;
-//  }
+
   
   return USBD_OK;
 }
@@ -502,11 +491,14 @@ static uint8_t  usbd_audio_Setup (void  *pdev,
         usbd_audio_AltSet = (uint8_t)(req->wValue);
         if (usbd_audio_AltSet == 1) {
 				alt_setting_now=usbd_audio_AltSet;
+				EVAL_AUDIO_Stop();
+				Play_ptr=0;//reset pointer
+				Write_ptr=0;
 				DCD_EP_Open(pdev, AUDIO_OUT_EP, AUDIO_OUT_PKTSIZE, USB_OTG_EP_ISOC);
 				DCD_EP_Open(pdev, AUDIO_IN_EP, 4, USB_OTG_EP_ISOC);
 				DCD_EP_Flush(pdev,AUDIO_IN_EP);
 				DCD_EP_PrepareRx(pdev , AUDIO_OUT_EP , (uint8_t*)IsocOutBuff , AUDIO_OUT_PKTSIZE ); 
-//				fb(working_samplerate);
+				fb();
 			}
 			else	//zero bandwidth
 			{
@@ -553,7 +545,23 @@ static uint8_t  usbd_audio_EP0_RxReady (void  *pdev)
       AudioCtlCmd = 0;
       AudioCtlLen = 0;
     }
-  } 
+  }
+
+	/* request to endpoint */  //采样频率控制
+	else if (AudioCtlReq == AUDIO_REQ_INTERFACE && AudioCtlUnit == AUDIO_CLK_ID && AudioCtlCS  == CS_SAM_FREQ_CONTROL)
+	{
+		u32 tmpfreq;
+		tmpfreq=((AudioCtl[2]<<16)|(AudioCtl[1]<<8)|AudioCtl[0]);
+		
+		if(tmpfreq==44100) working_samplerate=44100;
+		if(tmpfreq==48000) working_samplerate=48000;
+		if(tmpfreq==96000) working_samplerate=96000;
+		if(tmpfreq==192000) working_samplerate=192000;
+		
+		AudioCtlReq = 0;AudioCtlUnit = 0;AudioCtlCS=0;
+		
+		printf("s:%d\r\n",tmpfreq);
+	}  
   
   return USBD_OK;
 }
@@ -598,7 +606,7 @@ u32 switchI24O32(u8 *Ibuffer,u16 offset)
 	Hbyte=Ibuffer[offset+2];
 	
 	tmpchr= (Hbyte<<8) | (Mbyte<<0) |  (Lbyte<<24);
-	tmpchr=tmpchr & 0xff00ffff;
+	//tmpchr=tmpchr & 0xff00ffff;
 
 	return tmpchr; 
 }
@@ -668,14 +676,16 @@ vu32 nextbuf;
 	if (data_remain > i2s_BUFSIZE/3*2 ) play_speed=-1;//like 44000
 	else if (data_remain > i2s_BUFSIZE/2 ) play_speed=0;//like 44100
 	else play_speed=1;//like 44200
-	
 
     /* Toggle the frame index */  
     ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].even_odd_frame = 
       (((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].even_odd_frame)? 0:1;
       
     //设定OUT端点准备接受下一数据包
-    DCD_EP_PrepareRx(pdev,AUDIO_OUT_EP,(uint8_t*)IsocOutBuff,AUDIO_OUT_PKTSIZE);      
+    DCD_EP_PrepareRx(pdev,AUDIO_OUT_EP,(uint8_t*)IsocOutBuff,AUDIO_OUT_PKTSIZE);   
+
+	fb();	//update fb value
+	//DCD_EP_Tx(pdev, AUDIO_IN_EP, fb_buf, 4);	
 	
   }
   return USBD_OK;
@@ -690,7 +700,8 @@ vu32 nextbuf;
   */
 static uint8_t  usbd_audio_SOF (void *pdev)
 {     
-	if(alt_setting_now){
+	if(alt_setting_now)
+	{
 	DCD_EP_Tx(pdev, AUDIO_IN_EP, fb_buf, 4);
 	}
   
@@ -714,6 +725,14 @@ static uint8_t  usbd_audio_OUT_Incplt (void  *pdev)
 ******************************************************************************/
 static void AUDIO_Req_ClockSource(void *pdev, USB_SETUP_REQ *req)
 {
+uint8_t req_type = 	req->bmRequest & 0x1f; /* Set the request type. See UAC Spec 1.0 - 5.2.1 Request Layout */
+uint8_t cmd = 		req->bRequest;//AUDIO_REQ_SET_CUR;          /* Set the request value */
+uint8_t len = 		(uint8_t)req->wLength;      /* data length */
+uint8_t unit = 		HIBYTE(req->wIndex);       /* target unit */
+uint8_t index = 	req->wIndex & 0xf;		/* endpoint number */
+uint8_t CS = 	HIBYTE(req->wValue);         /* control selector (high byte) */
+uint8_t CN = 	LOBYTE(req->wValue);         /* control number (low byte) */  
+
     switch (CS_ID(req->wValue)) {
         case CS_CONTROL_UNDEFINED:
             USBD_CtlError (pdev, req);
@@ -725,32 +744,31 @@ static void AUDIO_Req_ClockSource(void *pdev, USB_SETUP_REQ *req)
 
                     if (req->bmRequest & AUDIO_REQ_GET_MASK) {
                         //Get Layout 3 parameter block
-                        uint8_t para_block[4] ;//= {0x80,0xBB,0x00,0x00};
+                        //uint8_t para_block[4] ;//= {0x80,0xBB,0x00,0x00};
 						
 						
-						para_block[0] = (uint8_t)(working_samplerate);
-						para_block[1] = (uint8_t)(working_samplerate >> 8);
-						para_block[2] = (uint8_t)(working_samplerate >> 16);
-						para_block[3] = (uint8_t)(working_samplerate >> 24);
+						AudioCtl[0] = (uint8_t)(working_samplerate);
+						AudioCtl[1] = (uint8_t)(working_samplerate >> 8);
+						AudioCtl[2] = (uint8_t)(working_samplerate >> 16);
+						AudioCtl[3] = (uint8_t)(working_samplerate >> 24);
 				
-                        USBD_CtlSendData(pdev, para_block, sizeof(para_block) );
+                        USBD_CtlSendData(pdev, AudioCtl, 4 );
                     
 					
 					}
-					else {
+					else 
+					{
                         //Set 		//设置采样率
 					
-						u32 tmpfreq;
-                        uint8_t para_block[4] = {0};
 						
-                        USBD_CtlPrepareRx (pdev, para_block, req->wLength);
+                        USBD_CtlPrepareRx (pdev, AudioCtl, 4);
+										/* Set the global variables indicating current request and its length 
+				to the function usbd_audio_EP0_RxReady() which will process the request */
+				AudioCtlReq = AUDIO_REQ_INTERFACE;  
+				AudioCtlUnit = AUDIO_CLK_ID;  /* Set the request target unit */
+				AudioCtlCS  = CS_SAM_FREQ_CONTROL;
 						
-						tmpfreq=((para_block[3]<<24)|(para_block[2]<<16)|(para_block[1]<<8)|para_block[0]);
-						
-						if(tmpfreq==44100) working_samplerate=44100;
-						if(tmpfreq==48000) working_samplerate=48000;
-						if(tmpfreq==96000) working_samplerate=96000;
-						if(tmpfreq==192000) working_samplerate=192000;
+
 						
                     }
                     break;

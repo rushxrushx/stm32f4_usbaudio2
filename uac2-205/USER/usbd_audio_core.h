@@ -148,7 +148,7 @@
 
 extern USBD_Class_cb_TypeDef  AUDIO_cb;
 extern u32 overrun_counter;
-extern u8 alt_setting_now;
+extern vu8 alt_setting_now;
 extern vu32 data_remain;
 extern u32 fb_success;
 extern u32 fb_incomplt;

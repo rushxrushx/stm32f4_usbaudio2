@@ -5,8 +5,8 @@
 						 
 extern vu8 audiostatus;							//bit0:0,暂停播放;1,继续播放 
 extern vu32 working_samplerate;  
-extern vu16 Play_ptr;							//即将播放的音频帧缓冲编号
-extern vu16 Write_ptr;							//当前保存到的音频缓冲编号 
+extern vu32 Play_ptr;							//即将播放的音频帧缓冲编号
+extern vu32 Write_ptr;							//当前保存到的音频缓冲编号 
 extern u32 underrun_counter;
 extern u32 const i2s_BUFSIZE;								
 extern u32 i2s_buf[]; 					//音频缓冲数组 

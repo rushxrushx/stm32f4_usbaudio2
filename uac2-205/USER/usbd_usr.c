@@ -46,13 +46,13 @@ void USBD_USR_DeviceReset (uint8_t speed)
 	switch (speed)
 	{
 		case USB_OTG_SPEED_HIGH:
-			printf("DeviceReset [HS]\r\n");
+			printf("Reset[HS]\r\n");
 			break; 
 		case USB_OTG_SPEED_FULL: 
-			printf("DeviceReset [FS]\r\n");
+			printf("Reset[FS]\r\n");
 			break;
 		default:
-			printf("DeviceReset [??]\r\n"); 
+			printf("Reset[??]\r\n"); 
 			break;
 	}
 }
@@ -60,29 +60,29 @@ void USBD_USR_DeviceReset (uint8_t speed)
 void USBD_USR_DeviceConfigured (void)
 {
 	bDeviceState=1;
-	printf("DeviceConfigured.\r\n"); 
+	printf("Configured.\r\n"); 
 } 
 //USB Device挂起
 void USBD_USR_DeviceSuspended(void)
 {
-	bDeviceState=0;
-	printf("Device suspend\r\n");
+	bDeviceState=10;
+	printf("suspend\r\n");
 } 
 //USB Device恢复
 void USBD_USR_DeviceResumed(void)
 { 
 	bDeviceState=1;
-	printf("Device Resumed\r\n");
+	printf("Resumed\r\n");
 }
 //USB Device连接成功
 void USBD_USR_DeviceConnected (void)
 {
-	printf("DeviceConnected.\r\n");
+	printf("Connected.\r\n");
 }
 //USB Device未连接
 void USBD_USR_DeviceDisconnected (void)
 {
-	printf("DeviceDisconnected.\r\n");
+	printf("Disconnect.\r\n");
 } 
 
 

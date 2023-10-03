@@ -5,8 +5,8 @@
  
 vu8 audiostatus=0;							//bit0:0,暂停播放;1,继续播放  
 vu32 working_samplerate=44100;	//当前采样频率 
-vu16 Play_ptr=0;								//即将播放的音频帧缓冲编号
-vu16 Write_ptr=0;							//当前保存到的音频缓冲编号 
+vu32 Play_ptr=0;								//即将播放的音频帧缓冲编号
+vu32 Write_ptr=0;							//当前保存到的音频缓冲编号 
 u32 underrun_counter=0;
 u32 const i2s_BUFSIZE=4000;								
 u32 i2s_buf[i2s_BUFSIZE+2]; 	//音频缓冲
@@ -338,7 +338,7 @@ void EVAL_AUDIO_Play(void)
 	DMA_Cmd(AUDIO_I2S_DMA_STREAM,ENABLE);
 	I2S_Reconf(working_samplerate);
 	DAC_EN;
-	LEDON;
+	//LEDON;
 	audiostatus=1;
 }
  
@@ -349,7 +349,7 @@ void EVAL_AUDIO_Stop(void)
 	RCC_APB1PeriphClockCmd(AUDIO_I2S_SPI_SPIX, DISABLE);//停止SPI2时钟，无需等待
 	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_CLOCK,DISABLE);//停止DMA1时钟，无需等待
 	DAC_DIS;
-	LEDOFF;
+	//LEDOFF;
 	audiostatus=0;
 	if (alt_setting_now==0){overrun_counter=0;underrun_counter=0;}
 }
@@ -358,7 +358,7 @@ void EVAL_AUDIO_Stop(void)
 //音频数据I2S DMA传输回调函数
 void audio_i2s_dma_callback(void) 
 { 
-u16 next_Playptr;
+u32 next_Playptr;
 
 	DMA_Cmd(AUDIO_I2S_DMA_STREAM,DISABLE);//关闭DMA才能修改
 
