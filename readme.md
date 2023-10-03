@@ -2,7 +2,7 @@
 # Cheapest STM32F2 Asynchronous USB Audio2  
 ### Using stm32f205+usb3300,Support external audio master clock   
    
-![Image text](https://raw.github.com/rushxrushx/repositpry/master/stm32f4_usbaudio2/image/testpcb.jpg)  
+![Image pcb](https://github.com/rushxrushx/stm32f4_usbaudio2/blob/master/image/testpcb.jpg?raw=true)  
   
 compiler: KEIL MDK-ARM 4.74.0.22   
 note: windows PC need uac2 asio driver  
