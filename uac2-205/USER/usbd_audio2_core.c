@@ -33,15 +33,10 @@ static uint8_t  *USBD_audio_GetCfgDesc (uint8_t speed, uint16_t *length);
 /** @defgroup usbd_audio_Private_Variables
   * @{
   */ 
-/* Main Buffer for Audio Data Out transfers and its relative pointers */
-//uint8_t  IsocOutBuff [TOTAL_OUT_BUF_SIZE * 2];
-//uint8_t* IsocOutWrPtr = IsocOutBuff;
-//uint8_t* IsocOutRdPtr = IsocOutBuff;
 
-//#define bitdepth 32
 #define bitdepth 24
-#define bpf (bitdepth/8*2) //byte per frame  (8 for 32bits) 帧字节数
-#define bpfs (bitdepth/8)  //sub frame size  (4 for 32bits) 单声道字节数
+#define bpf (bitdepth/8*2) //byte per frame   帧字节数
+#define bpfs (bitdepth/8)  //sub frame size  单声道字节数
 
 // 接收数据包临时缓冲区，相当于103的PMA
 u32 IsocOutBuff [AUDIO_OUT_PKTSIZE / 4];   //以整数为单位，拒绝左右声道错乱
@@ -50,9 +45,10 @@ u32 overrun_counter=0;
 u32 fb_success=0;
 u32 fb_incomplt=0;
 u32 rx_incomplt=0;
+vu32 data_remain;
 s32 play_speed=0;
 u8 fb_buf[4];
-vu8 alt_setting_now=0;
+u8 alt_setting_now=0;
 u8 audioIsMute=0;
 u8 audioVol=100; 
 
@@ -84,7 +80,7 @@ USBD_Class_cb_TypeDef  AUDIO_cb =
   usbd_audio_OUT_Incplt,   
   USBD_audio_GetCfgDesc,
 #ifdef USB_OTG_HS_CORE  
-  USBD_audio_GetCfgDesc, /* use same config as per FS */
+  USBD_audio_GetCfgDesc, /* other speed desc */
 #endif    
 };
 
@@ -255,8 +251,8 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
   AUDIO_INTERFACE_DESCRIPTOR_TYPE,      /* bDescriptorType */
   AUDIO_STREAMING_FORMAT_TYPE,          /* bDescriptorSubtype */
   AUDIO_FORMAT_TYPE_I,                  /* bFormatType */
-  HALF_WORD_BYTES,                      /* bSubslotSize */
-  SAMPLE_BITS,                          /* bBitResolution */
+  bpfs,                      /* bSubslotSize */
+  bitdepth,                          /* bBitResolution */
   /* 6 byte*/
   
   /* Endpoint 1 - Standard Descriptor */
@@ -264,7 +260,7 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
   USB_ENDPOINT_DESCRIPTOR_TYPE,         /* bDescriptorType */
   AUDIO_OUT_EP,                         /* bEndpointAddress 3 out endpoint for Audio */
   USB_ENDPOINT_TYPE_ASYNCHRONOUS,           /* bmAttributes */
-  (200 + 0)&0xff, ((200 + 0)>>8)&0xff,     /* XXXX wMaxPacketSize in Bytes (Freq(Samples)*2(Stereo)*2(HalfWord)) */
+  (AUDIO_OUT_PKTSIZE + 0)&0xff, ((AUDIO_OUT_PKTSIZE + 0)>>8)&0xff,     /* wMaxPacketSize in Bytes (Freq(Samples)*2(Stereo)*2(HalfWord)) */
   0x01,                                 /* bInterval */
   /* 07 byte*/
   
@@ -289,6 +285,36 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
     0x01,                           /* bInterval */
 	//added 7 bytes
 } ;
+
+//Get Layout 3 parameter block
+static uint8_t sample_block[] = {
+	SAMPLE_FREQ_NUM(6),                       /* wNumSubRanges */
+	
+	SAMPLE_FREQ_4B(I2S_AudioFreq_44k),        /* dMIN(1) */
+	SAMPLE_FREQ_4B(I2S_AudioFreq_44k),        /* dMAX(1) */
+	SAMPLE_FREQ_4B(0x00),                     /* dRES(1) */
+	
+	SAMPLE_FREQ_4B(I2S_AudioFreq_48k),        /* dMIN(1) */
+	SAMPLE_FREQ_4B(I2S_AudioFreq_48k),        /* dMAX(1) */
+	SAMPLE_FREQ_4B(0x00),                     /* dRES(1) */
+	
+	SAMPLE_FREQ_4B( (uint32_t)176400),        /* dMIN(1) */
+	SAMPLE_FREQ_4B( (uint32_t)176400),        /* dMAX(1) */
+	SAMPLE_FREQ_4B(0x00),                     /* dRES(1) */
+	
+	SAMPLE_FREQ_4B(I2S_AudioFreq_192k),        /* dMIN(2) */
+	SAMPLE_FREQ_4B(I2S_AudioFreq_192k),        /* dMAX(2) */
+	SAMPLE_FREQ_4B(0x00),                     /* dRES(2) */
+	
+	SAMPLE_FREQ_4B( (uint32_t)352800),        			/* dMIN(2) */
+	SAMPLE_FREQ_4B( (uint32_t)352800),        			/* dMAX(2) */
+	SAMPLE_FREQ_4B(0x00),                     /* dRES(2) */
+	
+	SAMPLE_FREQ_4B( (uint32_t)384000),        			/* dMIN(2) */
+	SAMPLE_FREQ_4B( (uint32_t)384000),        			/* dMAX(2) */
+	SAMPLE_FREQ_4B(0x00),                     /* dRES(2) */
+	
+};
 
 /**
   * @}
@@ -352,7 +378,13 @@ case 192000:
 	else if (play_speed>0)	PlayRate = (191 << 14) + (0 << 14)/10;
 	else					PlayRate = (193 << 14) + (0 << 14)/10;
 	break;
-		
+
+case 384000:
+
+	if (play_speed==0)		PlayRate = (384 << 14) + (0 << 14)/10;
+	else if (play_speed>0)	PlayRate = (383 << 14) + (0 << 14)/10;
+	else					PlayRate = (385 << 14) + (0 << 14)/10;
+	break;		
 
 default:
 	return;
@@ -383,18 +415,9 @@ void usbd_ConfigureAudio(int mode)
 * @param  cfgidx: Configuration index
 * @retval status
 */
-static uint8_t  usbd_audio_Init (void  *pdev, 
-                                 uint8_t cfgidx)
+static uint8_t  usbd_audio_Init (void  *pdev, uint8_t cfgidx)
 {  
-  /* Open EP OUT */
-//  DCD_EP_Open(pdev,AUDIO_OUT_EP,sAUDIO_OUT_PACKET,USB_OTG_EP_ISOC);
 
-  /* Initialize the Audio output Hardware layer */
-
-    
-  /* Prepare Out endpoint to receive audio data */
-//  DCD_EP_PrepareRx(pdev,AUDIO_OUT_EP,(uint8_t*)IsocOutBuff,sAUDIO_OUT_PACKET);
-  
   return USBD_OK;
 }
 
@@ -405,14 +428,9 @@ static uint8_t  usbd_audio_Init (void  *pdev,
 * @param  cfgidx: Configuration index
 * @retval status
 */
-static uint8_t  usbd_audio_DeInit (void  *pdev, 
-                                   uint8_t cfgidx)
+static uint8_t  usbd_audio_DeInit (void  *pdev, uint8_t cfgidx)
 { 
-//  DCD_EP_Close (pdev , AUDIO_OUT_EP);
-  
-  /* DeInitialize the Audio output Hardware layer */
 
-  
   return USBD_OK;
 }
 
@@ -529,12 +547,11 @@ static uint8_t  usbd_audio_Setup (void  *pdev,
   */
 static uint8_t  usbd_audio_EP0_RxReady (void  *pdev)
 { 
-  /* Check if an AudioControl request has been issued */
-  if (AudioCtlCmd == AUDIO_REQ_SET_CUR)
-  {/* In this driver, to simplify code, only SET_CUR request is managed */
-    /* Check for which addressed unit the AudioControl request has been issued */
-    if (AudioCtlUnit == AUDIO_FU_ID)
-    {/* In this driver, to simplify code, only one unit is managed */
+
+  if ( (AudioCtlCmd == AUDIO_REQ_SET_CUR) || (AudioCtlUnit == AUDIO_FU_ID) )    /* request to feture unit */
+  {
+
+    /* In this driver, to simplify code, only one unit is managed */
         if (AudioCtlCS == AUDIO_CONTROL_VOLUME) {
             //AUDIO_OUT_fops.VolumeCtl(AudioCtl[0]);
         } else if (AudioCtlCS == AUDIO_CONTROL_MUTE) {
@@ -544,7 +561,7 @@ static uint8_t  usbd_audio_EP0_RxReady (void  *pdev)
       /* Reset the AudioCtlCmd variable to prevent re-entering this function */
       AudioCtlCmd = 0;
       AudioCtlLen = 0;
-    }
+    
   }
 
 	/* request to endpoint */  //采样频率控制
@@ -553,14 +570,24 @@ static uint8_t  usbd_audio_EP0_RxReady (void  *pdev)
 		u32 tmpfreq;
 		tmpfreq=((AudioCtl[2]<<16)|(AudioCtl[1]<<8)|AudioCtl[0]);
 		
-		if(tmpfreq==44100) working_samplerate=44100;
-		if(tmpfreq==48000) working_samplerate=48000;
-		if(tmpfreq==96000) working_samplerate=96000;
-		if(tmpfreq==192000) working_samplerate=192000;
+		switch (tmpfreq){		//whitelist avoid bad data
+			case 44100:
+			case 48000:
+			case 88200:
+			case 96000:
+			case 176400:
+			case 192000:
+			case 352800:
+			case 384000:
+				working_samplerate=tmpfreq;
+				break;
+			default:
+				break;
+		}
 		
-		AudioCtlReq = 0;AudioCtlUnit = 0;AudioCtlCS=0;
+		AudioCtlReq = 0;AudioCtlUnit = 0;AudioCtlCS=0;// Reset the AudioCtlCmd variable to prevent re-entering this function
 		
-		printf("s:%d\r\n",tmpfreq);
+		printf("s:%d\r\n",tmpfreq);//log
 	}  
   
   return USBD_OK;
@@ -621,7 +648,6 @@ u32 switchI24O32(u8 *Ibuffer,u16 offset)
 //输出已完成
 u32 rx_bytes_count=0;
 u32 rx_frames_count;
-vu32 data_remain;
 static uint8_t  usbd_audio_DataOut (void *pdev, uint8_t epnum)
 {     
 
@@ -725,24 +751,24 @@ static uint8_t  usbd_audio_OUT_Incplt (void  *pdev)
 ******************************************************************************/
 static void AUDIO_Req_ClockSource(void *pdev, USB_SETUP_REQ *req)
 {
-uint8_t req_type = 	req->bmRequest & 0x1f; /* Set the request type. See UAC Spec 1.0 - 5.2.1 Request Layout */
-uint8_t cmd = 		req->bRequest;//AUDIO_REQ_SET_CUR;          /* Set the request value */
+uint8_t req_type = 	req->bmRequest; /* Set the request type. */
+uint8_t cmd = 		req->bRequest;  		/* Set the request value */
 uint8_t len = 		(uint8_t)req->wLength;      /* data length */
 uint8_t unit = 		HIBYTE(req->wIndex);       /* target unit */
 uint8_t index = 	req->wIndex & 0xf;		/* endpoint number */
 uint8_t CS = 	HIBYTE(req->wValue);         /* control selector (high byte) */
 uint8_t CN = 	LOBYTE(req->wValue);         /* control number (low byte) */  
 
-    switch (CS_ID(req->wValue)) {
+    switch (CS) {
         case CS_CONTROL_UNDEFINED:
             USBD_CtlError (pdev, req);
             break;
         
         case CS_SAM_FREQ_CONTROL:	//采样率获取/设置
-            switch (req->bRequest) {
+            switch (cmd) {
                 case AUDIO_REQ_CUR:	//获取工作采样率
 
-                    if (req->bmRequest & AUDIO_REQ_GET_MASK) {
+                    if (req_type & AUDIO_REQ_GET_MASK) {
                         //Get Layout 3 parameter block
                         //uint8_t para_block[4] ;//= {0x80,0xBB,0x00,0x00};
 						
@@ -774,30 +800,10 @@ uint8_t CN = 	LOBYTE(req->wValue);         /* control number (low byte) */
                     break;
                 
                 case AUDIO_REQ_RANGE:		//获取设备能力
-                    if (req->bmRequest & AUDIO_REQ_GET_MASK) {
-                        //Get Layout 3 parameter block
-                        uint8_t para_block[] = {
-                            SAMPLE_FREQ_NUM(4),                       /* wNumSubRanges */
-                            
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_44k),        /* dMIN(1) */
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_44k),        /* dMAX(1) */
-                            SAMPLE_FREQ_4B(0x00),                     /* dRES(1) */
-                            
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_48k),        /* dMIN(1) */
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_48k),        /* dMAX(1) */
-                            SAMPLE_FREQ_4B(0x00),                     /* dRES(1) */
-                            
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_96k),        /* dMIN(1) */
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_96k),        /* dMAX(1) */
-                            SAMPLE_FREQ_4B(0x00),                     /* dRES(1) */
-                            
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_192k),        /* dMIN(2) */
-                            SAMPLE_FREQ_4B(I2S_AudioFreq_192k),        /* dMAX(2) */
-                            SAMPLE_FREQ_4B(0x00),                     /* dRES(2) */
-                        };
-                        USBD_CtlSendData(pdev, 
-                            para_block,
-                            req->wLength);
+                    if (req_type & AUDIO_REQ_GET_MASK) {
+
+                        USBD_CtlSendData(pdev, sample_block, req->wLength);
+						
                     } else {
                         //Set
                     }

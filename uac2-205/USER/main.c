@@ -1,6 +1,6 @@
 #include "usart.h"   
 #include "gpio.h"  
-#include "usbd_audio_core.h"
+#include "usbd_audio2_core.h"
 #include "audio_out.h"
 #include "usbd_usr.h"
 #include "usb_conf.h" 	
@@ -61,17 +61,15 @@ int main(void)
 			if(cnt>500000)
 			{
 			cnt=0;
-			/*
-			// 隐藏光标
-			printf("%c[2K", 27);
-			printf("\033[?25l");
-			printf("\rfbOk:%d",fb_success);
-			printf(",fbNG:%d",fb_incomplt);
-			printf(",LOS:%d",rx_incomplt);
-			printf(",buf:%d",data_remain);
-			printf(",ov:%d",overrun_counter);
-			printf(",UD:%d",underrun_counter);
-			*/
+			
+			printf("\rfbOk:%d,",fb_success);
+			printf("fbNG:%d,",fb_incomplt);
+			printf("LOS:%d,",rx_incomplt);
+			printf("buf:%d,",data_remain);
+			printf("ov:%d,",overrun_counter);
+			printf("UD:%d,",underrun_counter);
+			printf("   ");
+			
 			los_cnt++;
 			if(los_cnt>1000){
 			los_cnt=0;

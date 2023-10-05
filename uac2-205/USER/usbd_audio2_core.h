@@ -49,41 +49,6 @@
   * @{
   */ 
 
-/*
- * ATT: with 3/4 bytes and 24/32bit it does not work on Windows: correct shown but error when tried to play
- */
-
-//#ifdef I2S_24BIT
-//works: 48 KHz, 24bit - but disable all Enhancements on Windows Sound - mode 1
-#define	USBD_AUDIO_FREQ							192000		//bits per seconds
-#define HALF_WORD_BYTES							  3			//3 half word (one channel)
-#define SAMPLE_BITS								 24			//24 bit per channel
-//#else
-//works: 48 KHz, 16bit - mode 0
-//#define	USBD_AUDIO_FREQ								96000		//96000 : bits per seconds
-//#define HALF_WORD_BYTES								  2			//2 half word (one channel)
-//#define SAMPLE_BITS									 16			//16 bit per channel
-//but 96 KHz, 24bit does not work on Windows, 96 KHz, 16bit is OK
-//#endif
-
-//works: 48 KHz, 24bit - but disable all Enhancements on Windows Sound - mode 1
-//#define	USBD_AUDIO_FREQ2							48000		//bits per seconds
-//#define HALF_WORD_BYTES2							  3			//3 half word (one channel)
-//#define SAMPLE_BITS2								 24			//24 bit per channel
-
-/* AudioFreq * DataSize (HALF_WORD_BYTES bytes) * NumChannels (Stereo: 2) */
-/* ATT: make sure that the AUDIO_OUT_PACKET uses the largest value ! */
-#ifndef USE_USB_OTG_HS
-#define AUDIO_OUT_PACKET                              (uint32_t)(((USBD_AUDIO_FREQ  * 2 * HALF_WORD_BYTES)  /1000))
-#else
-#define AUDIO_OUT_PACKET                              (uint32_t)(((USBD_AUDIO_FREQ  * 2 * HALF_WORD_BYTES)  /8000))
-#endif
-
-/* Number of sub-packets in the audio transfer buffer. You can modify this value but always make sure
-  that it is an even number and higher than 3 */
-#define OUT_PACKET_NUM                                 4		//4
-/* Total size of the audio transfer buffer */
-#define TOTAL_OUT_BUF_SIZE                           ((uint32_t)(AUDIO_OUT_PACKET * OUT_PACKET_NUM))
 
 #define AUDIO_CONFIG_DESC_SIZE                        152
 #define AUDIO_INTERFACE_DESC_SIZE                     9
@@ -213,19 +178,12 @@ typedef struct _Audio_Fops
   * @{
   */ 
 
-//#ifndef USE_USB_OTG_HS
-//#define AUDIO_PACKET_SZE(frq)          (uint8_t)(((frq * 2 * HALF_WORD_BYTES)/1000) & 0xFF), \
-                                       (uint8_t)((((frq * 2 * HALF_WORD_BYTES)/1000) >> 8) & 0xFF)
-//#else
-//#define AUDIO_PACKET_SZE(frq)          (uint8_t)(((frq * 2 * HALF_WORD_BYTES)/8000) & 0xFF), \
-                                       (uint8_t)((((frq * 2 * HALF_WORD_BYTES)/8000) >> 8) & 0xFF)
-//#endif
-#define AUDIO_OUT_PKTSIZE 200
+
+#define AUDIO_OUT_PKTSIZE 300
 
 #define SAMPLE_FREQ_NUM(num)           (uint8_t)(num), (uint8_t)((num >> 8))
 #define SAMPLE_FREQ(frq)               (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16))
-#define SAMPLE_FREQ_4B(frq)            (uint8_t)(frq), (uint8_t)((frq >> 8)), \
-                                       (uint8_t)((frq >> 16)), (uint8_t)((frq >> 24))
+#define SAMPLE_FREQ_4B(frq)            (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16)), (uint8_t)((frq >> 24))
 /**
   * @}
   */ 
@@ -254,7 +212,14 @@ void usbd_ConfigureAudio(int mode);
 /**
   * @}
   */ 
-
+extern u32 overrun_counter;
+extern u32 fb_success;
+extern u32 fb_incomplt;
+extern u32 rx_incomplt;
+extern vu32 data_remain;
+extern u8 alt_setting_now;
+extern u8 audioIsMute;
+extern u8 audioVol; 
 /**
   * @}
   */ 

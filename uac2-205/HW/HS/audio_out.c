@@ -1,4 +1,4 @@
-#include "usbd_audio_core.h"
+#include "usbd_audio2_core.h"
 #include "gpio.h"
 #include "spi1.h"
 #include "audio_out.h"

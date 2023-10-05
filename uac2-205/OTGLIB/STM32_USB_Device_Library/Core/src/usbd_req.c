@@ -444,9 +444,9 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
       
       pbuf   = (uint8_t *)pdev->dev.class_cb->GetConfigDescriptor(pdev->cfg.speed, &len);
             
-      USBD_DeviceQualifierDesc[4]= pbuf[14];
-      USBD_DeviceQualifierDesc[5]= pbuf[15];
-      USBD_DeviceQualifierDesc[6]= pbuf[16];
+//      USBD_DeviceQualifierDesc[4]= pbuf[14];
+//      USBD_DeviceQualifierDesc[5]= pbuf[15];
+//      USBD_DeviceQualifierDesc[6]= pbuf[16];
       
       pbuf = USBD_DeviceQualifierDesc;
       len  = USB_LEN_DEV_QUALIFIER_DESC;
