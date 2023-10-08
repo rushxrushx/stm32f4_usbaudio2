@@ -179,7 +179,7 @@ typedef struct _Audio_Fops
   */ 
 
 
-#define AUDIO_OUT_PKTSIZE 300
+#define AUDIO_OUT_PKTSIZE 400
 
 #define SAMPLE_FREQ_NUM(num)           (uint8_t)(num), (uint8_t)((num >> 8))
 #define SAMPLE_FREQ(frq)               (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16))
@@ -192,7 +192,7 @@ typedef struct _Audio_Fops
   * @{
   */ 
 
-extern USBD_Class_cb_TypeDef  AUDIO_cb;
+extern USBD_Class_cb_TypeDef  CLASS_cb;
 
 /**
   * @}
@@ -201,8 +201,6 @@ extern USBD_Class_cb_TypeDef  AUDIO_cb;
 /** @defgroup USB_CORE_Exported_Functions
   * @{
   */
-
-void usbd_ConfigureAudio(int mode);
 
 /**
   * @}

@@ -63,34 +63,34 @@ u32 i2sclk;
     if(I2S_InitStruct->I2S_MCLKOutput == I2S_MCLKOutput_Enable)
     {
       /* MCLK output is enabled */
-      tmp = (uint16_t)(((((i2sclk / 256) * 10) / I2S_InitStruct->I2S_AudioFreq)) + 5);
+      tmp = (uint16_t)((((i2sclk / 256)  / I2S_InitStruct->I2S_AudioFreq)) + 0);
     }
     else
     {
       /* MCLK output is disabled */
-      tmp = (uint16_t)(((((i2sclk / (32 * packetlength)) *10 ) / I2S_InitStruct->I2S_AudioFreq)) + 5);
+      tmp = (uint16_t)((((i2sclk / (32 * packetlength)) / I2S_InitStruct->I2S_AudioFreq)) + 0);
     }
     
     /* Remove the flatting point */
-    tmp = tmp / 10;  
+    //tmp = tmp / 1;  
       
     /* Check the parity of the divider */
-    i2sodd = (uint16_t)(tmp & (uint16_t)0x0001);
+    i2sodd = 0;
    
     /* Compute the i2sdiv prescaler */
     i2sdiv = (uint16_t)((tmp - i2sodd) / 2);
    
     /* Get the Mask for the Odd bit (SPI_I2SPR[8]) register */
-    i2sodd = (uint16_t) (i2sodd << 8);
+   // i2sodd = (uint16_t) (i2sodd << 8);
 
 
   /* Test if the divider is 1 or 0 or greater than 0xFF */
-  if ((i2sdiv < 2) || (i2sdiv > 0xFF))
-  {
+ // if ((i2sdiv < 2) || (i2sdiv > 0xFF))
+  //{
     /* Set the default values */
-    i2sdiv = 2;
-    i2sodd = 0;
-  }
+  //  i2sdiv = 2;
+  //  i2sodd = 0;
+ // }
 
   /* Write to SPIx I2SPR register the computed value */
   SPIx->I2SPR = (uint16_t)((uint16_t)i2sdiv | (uint16_t)(i2sodd | (uint16_t)I2S_InitStruct->I2S_MCLKOutput));
@@ -393,7 +393,7 @@ uint32_t EVAL_AUDIO_Init()
 { 
 	I2S_GPInit();
 	I2S_DMA_Init();
-	EVAL_AUDIO_Stop();
+	//EVAL_AUDIO_Stop();
 	return 0; 
 }
 

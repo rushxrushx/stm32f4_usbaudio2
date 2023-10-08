@@ -221,7 +221,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>0</useUlib>
+            <useUlib>1</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <RoSelD>3</RoSelD>
@@ -356,13 +356,13 @@
             <wLevel>0</wLevel>
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
-            <uC99>0</uC99>
+            <uC99>1</uC99>
             <useXO>0</useXO>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,STM32F4XX,USE_STDPERIPH_DRIVER,USE_USB_OTG_HS,USE_ULPI_PHY</Define>
               <Undefine></Undefine>
-              <IncludePath>.\HW\HS;CORE;USER;ALIENTEK;FWLIB\inc;OTGLIB\STM32_USB_OTG_Driver\inc;OTGLIB\STM32_USB_Device_Library\Core\inc</IncludePath>
+              <IncludePath>.\HW\HS;.\CMBT;CORE;USER;ALIENTEK;FWLIB\inc;OTGLIB\STM32_USB_OTG_Driver\inc;OTGLIB\STM32_USB_Device_Library\Core\inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -564,6 +564,21 @@
               <FileName>usbd_audio2_core.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\usbd_audio2_core.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>cmbacktrace</GroupName>
+          <Files>
+            <File>
+              <FileName>cm_backtrace.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\CMBT\cm_backtrace.c</FilePath>
+            </File>
+            <File>
+              <FileName>cmb_fault.S</FileName>
+              <FileType>2</FileType>
+              <FilePath>.\CMBT\fault_handler\keil\cmb_fault.S</FilePath>
             </File>
           </Files>
         </Group>

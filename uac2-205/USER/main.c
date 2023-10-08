@@ -4,6 +4,7 @@
 #include "audio_out.h"
 #include "usbd_usr.h"
 #include "usb_conf.h" 	
+#include "cm_backtrace.h"
 
 USB_OTG_CORE_HANDLE USB_OTG_dev;
 extern vu8 bDeviceState;		//USB连接 情况
@@ -15,6 +16,8 @@ int main(void)
 	u32 los_cnt=0;
 	u32 loscount=0;
 	
+	cm_backtrace_init("1", "1", "1");
+
 	Board_Init();					//初始化LED 
 	LEDON;
 	SEL_NONE;
@@ -29,10 +32,10 @@ int main(void)
 	    
 
 #ifdef USE_USB_OTG_FS  		
- 	USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc,&AUDIO_cb,&USR_cb); 
+ 	USBD_Init(&USB_OTG_dev,USB_OTG_FS_CORE_ID,&USR_desc,&CLASS_cb,&USR_cb); 
 #endif
 #ifdef USE_USB_OTG_HS  	
- 	USBD_Init(&USB_OTG_dev,USB_OTG_HS_CORE_ID,&USR_desc,&AUDIO_cb,&USR_cb);    
+ 	USBD_Init(&USB_OTG_dev,USB_OTG_HS_CORE_ID,&USR_desc,&CLASS_cb,&USR_cb);    
 #endif
 	
 	EVAL_AUDIO_Init();
