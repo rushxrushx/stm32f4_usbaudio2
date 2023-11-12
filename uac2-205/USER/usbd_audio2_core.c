@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define bitdepth 24
+#define bitdepth 32
 #define bpf (bitdepth/8*2) //byte per frame   帧字节数
 #define bpfs (bitdepth/8)  //sub frame size  单声道字节数
 
@@ -18,20 +18,17 @@ u32 rx_incomplt=0;
 vu32 data_remain;
 s32 play_speed=0;
 u8 fb_buf[4];
-u8 alt_setting_now=0;
+vu32 alt_setting_now=0;
 u8 audioIsMute=0;
 u8 audioVol=100; 
 
 /* Main Buffer for Audio Control requests transfers and its relative variables */
-uint8_t  AudioCtl[64];
-uint8_t  AudioCtlReq = 0;
-uint8_t  AudioCtlCmd = 0;
-uint32_t AudioCtlLen = 0;
-uint8_t  AudioCtlCS  = 0;
-uint8_t  AudioCtlUnit = 0;
-
-static __IO uint32_t  usbd_audio_AltSet = 0;
-static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE];
+u8  AudioCtl[64];
+u8  AudioCtlReq = 0;
+u8  AudioCtlCmd = 0;
+u32 AudioCtlLen = 0;
+u8  AudioCtlCS  = 0;
+u8  AudioCtlUnit = 0;
 
 
 /* USB AUDIO device Configuration Descriptor */
@@ -599,7 +596,7 @@ static uint8_t  usbd_audio_Setup (void  *pdev,
       if( (req->wValue >> 8) == AUDIO_DESCRIPTOR_TYPE)
       {
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-        pbuf = usbd_audio_Desc;   
+        pbuf = usbd_audio_CfgDesc;   
 #else
         pbuf = usbd_audio_CfgDesc + 18;
 #endif 
@@ -612,39 +609,44 @@ static uint8_t  usbd_audio_Setup (void  *pdev,
       break;
       
     case USB_REQ_GET_INTERFACE :
-      USBD_CtlSendData (pdev,
-                        (uint8_t *)&usbd_audio_AltSet,
-                        1);
+      USBD_CtlSendData (pdev, (uint8_t *)&alt_setting_now, 1);
       break;
       
     case USB_REQ_SET_INTERFACE :		//switch alt settings
-      if ((uint8_t)(req->wValue) < AUDIO_TOTAL_IF_NUM)
-      {
-        usbd_audio_AltSet = (uint8_t)(req->wValue);
-        if (usbd_audio_AltSet == 1) {
-				alt_setting_now=usbd_audio_AltSet;
-				EVAL_AUDIO_Stop();
-				Play_ptr=0;//reset pointer
-				Write_ptr=0;
-				DCD_EP_Open(pdev, AUDIO_OUT_EP, AUDIO_OUT_PKTSIZE, USB_OTG_EP_ISOC);
-				DCD_EP_Open(pdev, AUDIO_IN_EP, 4, USB_OTG_EP_ISOC);
-				//DCD_EP_Flush(pdev,AUDIO_IN_EP);
-				DCD_EP_PrepareRx(pdev , AUDIO_OUT_EP , (uint8_t*)IsocOutBuff , AUDIO_OUT_PKTSIZE ); 
-				fb();
-			}
-			else	//zero bandwidth
-			{
-				alt_setting_now=0;
-				DCD_EP_Close (pdev , AUDIO_OUT_EP);
-				DCD_EP_Close (pdev , AUDIO_IN_EP);
-			}
+      //if ((uint8_t)(req->wValue) < AUDIO_TOTAL_IF_NUM)
+      //{
+		switch ( (uint8_t)(req->wValue) )
+		{
+			case 1 : 	//alt 1 (play)
+						alt_setting_now=1;
+						EVAL_AUDIO_Stop();
+						Play_ptr=0;//reset pointer
+						Write_ptr=0;
+						DCD_EP_Open(pdev, AUDIO_OUT_EP, AUDIO_OUT_PKTSIZE, USB_OTG_EP_ISOC);
+						DCD_EP_Open(pdev, AUDIO_IN_EP, 4, USB_OTG_EP_ISOC);
+						//DCD_EP_Flush(pdev,AUDIO_IN_EP);
+						DCD_EP_PrepareRx(pdev , AUDIO_OUT_EP , (uint8_t*)IsocOutBuff , AUDIO_OUT_PKTSIZE ); 
+						fb();
+			
+				break;
+			case 0 :	//zero bandwidth
+						alt_setting_now=0;
+						DCD_EP_Close (pdev , AUDIO_OUT_EP);
+						DCD_EP_Close (pdev , AUDIO_IN_EP);
+			
+				break;
+			default:
+			        /* Call the error management function (command will be naked) */
+					USBD_CtlError (pdev, req);
+				break;
+		}	  
 
-      }
-      else
-      {
+     // }
+     // else
+     // {
         /* Call the error management function (command will be naked) */
-        USBD_CtlError (pdev, req);
-      }
+      //  USBD_CtlError (pdev, req);
+      //}
       break;
     }
   }
@@ -726,44 +728,46 @@ static uint8_t  usbd_audio_EP0_RxReady (void  *pdev)
   */
 static uint8_t  usbd_audio_DataIn (void *pdev, uint8_t epnum)
 {
+fb_success++;
   return USBD_OK;
 }
 
 #if bitdepth==32	
 //32bit音频,需要处理一下
-
-	u32 tmpchrH;
-	u32 tmpchrL;
-	
+/*
 u32 switchHL(u32 input)
 {
-
+	u32 tmpchrH;
+	u32 tmpchrL;
 	tmpchrL=(input>>16) & 0xffff;
-
 	tmpchrH =(input& 0xffff) <<16;
-
 	tmpchrH = tmpchrH + tmpchrL;
-
 	return tmpchrH; 
 }
+*/
+
+u32 switchHL(u32 input)
+{
+	u32 tmpchr;
+	tmpchr=__REV(input);
+	return __REV16(tmpchr);
+}
+
 #else	
 //24bit音频,需要处理一下
 
+
+u32 switchI24O32(u8 *Ibuffer,u16 offset)
+{
 	u32 tmpchr;
 	u8 Hbyte;
 	u8 Mbyte;
 	u8 Lbyte;
-
-u32 switchI24O32(u8 *Ibuffer,u16 offset)
-{
-	
 	Lbyte=Ibuffer[offset+0];
 	Mbyte=Ibuffer[offset+1];
 	Hbyte=Ibuffer[offset+2];
-	
 	tmpchr= (Hbyte<<8) | (Mbyte<<0) |  (Lbyte<<24);
 	//tmpchr=tmpchr & 0xff00ffff;
-
 	return tmpchr; 
 }
 #endif
@@ -776,7 +780,7 @@ u32 switchI24O32(u8 *Ibuffer,u16 offset)
   * @retval status
   */
 //输出已完成
-u32 rx_bytes_count=0;
+u32 rx_bytes_count;
 u32 rx_frames_count;
 static uint8_t  usbd_audio_DataOut (void *pdev, uint8_t epnum)
 {     
@@ -840,7 +844,7 @@ vu32 nextbuf;
     DCD_EP_PrepareRx(pdev,AUDIO_OUT_EP,(uint8_t*)IsocOutBuff,AUDIO_OUT_PKTSIZE);   
 
 	fb();	//update fb value
-	//DCD_EP_Tx(pdev, AUDIO_IN_EP, fb_buf, 4);	
+	DCD_EP_Tx(pdev, AUDIO_IN_EP, fb_buf, 4);	
 	
   }
   return USBD_OK;
@@ -857,7 +861,8 @@ static uint8_t  usbd_audio_SOF (void *pdev)
 {     
 	if(alt_setting_now)
 	{
-	DCD_EP_Tx(pdev, AUDIO_IN_EP, fb_buf, 4);
+	//DCD_EP_Flush(pdev,AUDIO_IN_EP);
+	//DCD_EP_Tx(pdev, AUDIO_IN_EP, fb_buf, 4);
 	//DCD_EP_PrepareRx(pdev , AUDIO_OUT_EP , (uint8_t*)IsocOutBuff , AUDIO_OUT_PKTSIZE ); 
 	}
   
@@ -871,6 +876,7 @@ static uint8_t  usbd_audio_SOF (void *pdev)
   */
 static uint8_t  usbd_audio_IN_Incplt (void  *pdev)
 {
+fb_incomplt++;
   return USBD_OK;
 }
 
@@ -882,6 +888,7 @@ static uint8_t  usbd_audio_IN_Incplt (void  *pdev)
   */
 static uint8_t  usbd_audio_OUT_Incplt (void  *pdev)
 {
+rx_incomplt++;
   return USBD_OK;
 }
 

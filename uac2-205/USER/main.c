@@ -8,23 +8,29 @@
 
 USB_OTG_CORE_HANDLE USB_OTG_dev;
 extern vu8 bDeviceState;		//USB连接 情况
+u32 cnt=0;
+
+void SysTick_Handler(void)
+{
+	cnt++;
+}
 
 int main(void)
 {        
 	u8 Divece_STA=0XFF;
-	u32 cnt=0;
 	u32 los_cnt=0;
 	u32 loscount=0;
 	
 	cm_backtrace_init("1", "1", "1");
+	
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//中断优先级分组2--抢占0-4，顺序0-4
 
 	Board_Init();					//初始化LED 
 	LEDON;
 	SEL_NONE;
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组2
 	uart_init(115200);		//初始化串口波特率为115200
+	SysTick_Config(SystemCoreClock / 1000 * 20);//20ms
 
-	LED2_RED;
 	APWR_EN;
 		
 	printf("\033[2J");// 清除屏幕	
@@ -48,20 +54,17 @@ int main(void)
 			
 			if(bDeviceState!=0)
 			{
-			LED2_GRN;
+			LED_YEL;
 			}
 			else
 			{
-			LED2_RED;
-			LEDOFF;
+			LED_RED;
 			}
 		}
 
 		if(alt_setting_now!=0)
 		{
-		LEDON;
-			cnt++;
-			if(cnt>500000)
+			if(cnt>50)//100x10ms
 			{
 			cnt=0;
 			
@@ -74,21 +77,26 @@ int main(void)
 			printf("   ");
 			
 			los_cnt++;
-			if(los_cnt>1000){
+			if(los_cnt>60){//60s
 			los_cnt=0;
 			loscount=rx_incomplt;
 			}
 			
 			}
-			//if(fb_success<100){rx_incomplt=0;loscount=0;}//lost when start play is ignored.
-			//if (overrun_counter||underrun_counter) {LED_RED;}//error LED mean out of buffer.
-			//else if(rx_incomplt>loscount)	{LED_YEL;}//warn LED mean lost package.
-			//else LEDON;
+			if(fb_success<100){rx_incomplt=0;loscount=0;}//lost when start play is ignored.
+			if (overrun_counter||underrun_counter) {LED_RED;}//error LED mean out of buffer.
+			else {
+				if(rx_incomplt>loscount)	{LED_VLT;}//warn LED mean lost package.
+				else {
+					if(working_samplerate%44100==0) {LED_GRN;}
+					else {LED_BLU;}
+					}
+				}
 			
 		}
 		else
 		{
-			LEDOFF;
+			LED_YEL;
 			overrun_counter=0;underrun_counter=0;
 			fb_success=0;
 			cnt=0;

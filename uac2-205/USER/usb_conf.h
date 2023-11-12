@@ -152,7 +152,7 @@
    /* wakeup is working only when HS core is configured in FS mode */
    //#define USB_OTG_HS_LOW_PWR_MGMT_SUPPORT
  #endif
- //#define USB_OTG_HS_INTERNAL_DMA_ENABLED 
+ #define USB_OTG_HS_INTERNAL_DMA_ENABLED 
  #define USB_OTG_HS_DEDICATED_EP1_ENABLED
 #endif
 

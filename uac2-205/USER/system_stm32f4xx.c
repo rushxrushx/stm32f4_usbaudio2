@@ -4,7 +4,8 @@
 /************************* PLL Parameters *************************************/
 //PLL前置分频系数，产生 2MHZ VCO
 //rush: 假设输入12M,12/6=2 假设输入8m，8/4=2
-#define PLL_M      6
+#define PLL_M      HSE_VALUE/2000000
+//HSE_VALUE in "stm32f4xx.h" ,line 122
 
 //VCO==晶振 / M x N 
 //cpu==VCO / P

@@ -215,7 +215,7 @@ extern u32 fb_success;
 extern u32 fb_incomplt;
 extern u32 rx_incomplt;
 extern vu32 data_remain;
-extern u8 alt_setting_now;
+extern vu32 alt_setting_now;
 extern u8 audioIsMute;
 extern u8 audioVol; 
 /**

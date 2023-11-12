@@ -1,11 +1,17 @@
 
-# Cheapest STM32F2 Asynchronous USB Audio2  
-### Using stm32f205+usb3300,Support external audio master clock   
+# Cheapest STM32 Asynchronous USB Audio2  
+### with external audio master clock   
    
 ![Image pcb](https://github.com/rushxrushx/stm32f4_usbaudio2/blob/master/image/testpcb.jpg?raw=true)  
   
-compiler: KEIL MDK-ARM 4.74.0.22   
-note: windows PC need uac2 asio driver  
+This is uac2 project for stm32 series F205/F405/F207/F407 with builtin OTG-HS can be use.  
+OTG-HS not come with internal HS PHY, you need USB3300 ULPI PHY chip.  
+note: This project not working with MS audio driver,Windows need UAC2 driver,eg:Xmos usb stereo driver   
+stereo driver support up to 32/192k,if you want 32/384,try JLaudio driver(device PID VID must charged).
+and clock input must increse to 90MHZ/98MHZ because stm32 i2s minium is 256fs ...I dont tried.  
+I just tried 32/384 data rate is okay.USB Data not lost but i2s with 45/49MHZ clock only run 260khz  max...
+  
+compiler and IDE: KEIL MDK-ARM 4.74.0.22   
   
 ### v0.1   
 20231002  
@@ -20,6 +26,17 @@ add: reset i2s engine when enter playing altset
 fix: some var must add 'Voliate'  
 add: UART log ring buffer system,prevent 'while' when print logs.  
   
+### v20231008  
+ - add: cmbacktrace  
+ - and fixed :hardfault :IsoInincomptete jmp to null    
+ - clean: uac1 uac2 code  
+ 
+### v20231112  
+ - add: probably missing dma reset before play  
+  
 thanks to:  
 uac2 code from https://github.com/coflery/STM32F4_USB_SoundCard  
-  
+ALITENTEK devboard demo code (and ST demo code)  
+
+PCB thanksto:
+stm32f405+usb3300 DAPlink sch and PCB
