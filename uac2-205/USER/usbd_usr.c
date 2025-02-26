@@ -1,6 +1,6 @@
 #include "usbd_usr.h" 
-#include <stdio.h> 
-#include <usart.h> 
+#include <io.h> 
+
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK STM32F407开发板
@@ -52,7 +52,7 @@ void USBD_USR_DeviceReset (uint8_t speed)
 			printf("Reset[FS]\r\n");
 			break;
 		default:
-			printf("Reset[??]\r\n"); 
+			printf("Reset\r\n"); 
 			break;
 	}
 }
@@ -65,7 +65,7 @@ void USBD_USR_DeviceConfigured (void)
 //USB Device挂起
 void USBD_USR_DeviceSuspended(void)
 {
-	bDeviceState=10;
+	bDeviceState=2;
 	printf("suspend\r\n");
 } 
 //USB Device恢复
@@ -82,6 +82,7 @@ void USBD_USR_DeviceConnected (void)
 //USB Device未连接
 void USBD_USR_DeviceDisconnected (void)
 {
+	bDeviceState=0;
 	printf("Disconnect.\r\n");
 } 
 

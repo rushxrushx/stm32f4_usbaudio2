@@ -109,6 +109,19 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 
   RCC_AHB1PeriphClockCmd( RCC_AHB1Periph_OTG_HS |
                          RCC_AHB1Periph_OTG_HS_ULPI, ENABLE) ;
+						 
+//fix
+  //USB3300 RESET
+  #include "io.h" 
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  PBout(2)=1;
+USB_OTG_BSP_mDelay(10);  
+  PBout(2)=0;
+
 
   #else
    #ifdef USE_I2C_PHY

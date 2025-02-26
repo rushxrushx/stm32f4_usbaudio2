@@ -7,7 +7,7 @@
 
   <Targets>
     <Target>
-      <TargetName>HS</TargetName>
+      <TargetName>HS9018</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <TargetOption>
@@ -217,11 +217,11 @@
             <hadIRAM>1</hadIRAM>
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
-            <RvdsVP>1</RvdsVP>
+            <RvdsVP>2</RvdsVP>
             <hadIRAM2>1</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>1</useUlib>
+            <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <RoSelD>3</RoSelD>
@@ -237,7 +237,7 @@
             <Ro2Chk>0</Ro2Chk>
             <Ro3Chk>0</Ro3Chk>
             <Ir1Chk>1</Ir1Chk>
-            <Ir2Chk>0</Ir2Chk>
+            <Ir2Chk>1</Ir2Chk>
             <Ra1Chk>0</Ra1Chk>
             <Ra2Chk>0</Ra2Chk>
             <Ra3Chk>0</Ra3Chk>
@@ -307,12 +307,12 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x80000</Size>
+                <Size>0x4000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
-                <StartAddress>0x0</StartAddress>
-                <Size>0x0</Size>
+                <StartAddress>0x8020000</StartAddress>
+                <Size>0x40000</Size>
               </OCR_RVCT5>
               <OCR_RVCT6>
                 <Type>0</Type>
@@ -344,8 +344,8 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>3</Optim>
-            <oTime>0</oTime>
+            <Optim>0</Optim>
+            <oTime>1</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
             <Strict>0</Strict>
@@ -362,7 +362,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F40_41xxx,STM32F4XX,USE_STDPERIPH_DRIVER,USE_USB_OTG_HS,USE_ULPI_PHY</Define>
               <Undefine></Undefine>
-              <IncludePath>.\HW\HS;.\CMBT;CORE;USER;ALIENTEK;FWLIB\inc;OTGLIB\STM32_USB_OTG_Driver\inc;OTGLIB\STM32_USB_Device_Library\Core\inc</IncludePath>
+              <IncludePath>.\HW\HS9018;.\CMBT;CORE;USER;.\lib;FWLIB\inc;OTGLIB\STM32_USB_OTG_Driver\inc;OTGLIB\STM32_USB_Device_Library\Core\inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -403,7 +403,7 @@
       </TargetOption>
       <Groups>
         <Group>
-          <GroupName>cortexlib</GroupName>
+          <GroupName>cortexfw</GroupName>
           <Files>
             <File>
               <FileName>startup_stm32f40_41xxx.s</FileName>
@@ -413,7 +413,7 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>fwlib</GroupName>
+          <GroupName>stm32fw</GroupName>
           <Files>
             <File>
               <FileName>misc.c</FileName>
@@ -513,12 +513,17 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>alientek</GroupName>
+          <GroupName>lib</GroupName>
           <Files>
+            <File>
+              <FileName>tinyprintf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\lib\tinyprintf.c</FilePath>
+            </File>
             <File>
               <FileName>usart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\ALIENTEK\usart.c</FilePath>
+              <FilePath>.\lib\usart.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -526,19 +531,14 @@
           <GroupName>hw</GroupName>
           <Files>
             <File>
+              <FileName>io.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\HW\HS9018\io.c</FilePath>
+            </File>
+            <File>
               <FileName>audio_out.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\HW\HS\audio_out.c</FilePath>
-            </File>
-            <File>
-              <FileName>gpio.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\HW\HS\gpio.c</FilePath>
-            </File>
-            <File>
-              <FileName>spi1.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\HW\HS\spi1.c</FilePath>
+              <FilePath>.\HW\HS9018\audio_out.c</FilePath>
             </File>
           </Files>
         </Group>

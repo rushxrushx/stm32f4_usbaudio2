@@ -1,5 +1,4 @@
 #include "gpio.h" 
-#include "usart.h"  
  
 //HS board
 

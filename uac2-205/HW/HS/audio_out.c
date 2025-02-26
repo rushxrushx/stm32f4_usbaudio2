@@ -1,8 +1,8 @@
 #include "usbd_audio2_core.h"
 #include "gpio.h"
-#include "spi1.h"
+
 #include "audio_out.h"
-#include "stdio.h"
+#include "usart.h"
  
 vu8 audiostatus=0;							//bit0:0,暂停播放;1,继续播放  
 vu32 working_samplerate=44100;	//当前采样频率 
@@ -108,9 +108,9 @@ u32 i2sclk;
 
 
 
-#ifdef USE_USB_OTG_FS 
 // FS usb,401 chip,
 // spi2 is avliable
+#ifdef USE_USB_OTG_FS 
 void I2S_GPInit(void)
 {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -189,10 +189,10 @@ void DMA1_Stream4_IRQHandler(void)
 
 	
 #endif
-#ifdef USE_USB_OTG_HS 
+
 // 205 chip with usb3300 HS usb
 // spi2 not aviliable,must change to spi3 
-
+#ifdef USE_USB_OTG_HS 
 void I2S_GPInit(void)//spi3 gpio
 {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -239,10 +239,8 @@ void I2S_Reconf(uint32_t samplerate)
 {
 	I2S_InitTypeDef I2S_InitStructure;
 	
-
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);//使能SPI2时钟
-	
-	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPI2
+	//RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);//使能SPIx时钟
+	//RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPIx
 	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,DISABLE);//结束复位
   
 	I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
@@ -254,8 +252,8 @@ void I2S_Reconf(uint32_t samplerate)
 	I2S_Init_E(SPI3,&I2S_InitStructure);//初始化IIS
 
  
-	SPI_I2S_DMACmd(SPI3,SPI_I2S_DMAReq_Tx,ENABLE);//SPI2 TX DMA请求使能.
-	I2S_Cmd(SPI3,ENABLE);//SPI2 I2S EN使能.
+	SPI_I2S_DMACmd(SPI3,SPI_I2S_DMAReq_Tx,ENABLE);//SPIx TX DMA请求使能.
+	I2S_Cmd(SPI3,ENABLE);//I2Sx 使能.
 	
 }
 
@@ -282,8 +280,8 @@ void DMA1_Stream7_IRQHandler(void)
 #endif
 
 
-//I2S TX DMA NVIC配置
-void I2S_DMA_Init()
+//I2S DMA IRQ配置
+void I2S_DMA_irqInit()
 {  
 	NVIC_InitTypeDef   NVIC_InitStructure;
 		
@@ -295,15 +293,15 @@ void I2S_DMA_Init()
 
 } 	
 
-//I2S2 TX DMA配置
+//I2S2 DMA配置
 void I2S2_DMA_Reconf()
 {  
 u32 i=0;
 	DMA_InitTypeDef  DMA_InitStructure;
 	
-	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX,ENABLE);//DMA1时钟使能 
-	RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, ENABLE);//start reset
-	RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//end reset
+	//RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX,ENABLE);//DMA1时钟使能 
+	//RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, ENABLE);//start reset
+	//RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//end reset
 	
 	DMA_DeInit(AUDIO_I2S_DMA_STREAM);
 	while (DMA_GetCmdStatus(AUDIO_I2S_DMA_STREAM) != DISABLE)
@@ -317,7 +315,7 @@ u32 i=0;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;//外设非增量模式
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;//存储器增量模式
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;//外设数据长度:16位
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;//存储器数据长度：32位 
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;//存储器数据长度：32位 
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;// 非循环模式 
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;//高优先级
   DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable; //使用FIFO模式        
@@ -351,8 +349,12 @@ void EVAL_AUDIO_Play(void)
 //DMA停止播放
 void EVAL_AUDIO_Stop(void)
 {
-	RCC_APB1PeriphClockCmd(AUDIO_I2S_SPI_SPIX, DISABLE);//停止SPI2时钟，无需等待
-	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//停止DMA1时钟，无需等待
+I2S_Cmd(SPI3,DISABLE);
+DMA_Cmd(AUDIO_I2S_DMA_STREAM,DISABLE);
+
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPIx
+	//RCC_APB1PeriphClockCmd(AUDIO_I2S_SPI_SPIX, DISABLE);//停止SPIx时钟，无需等待
+	//RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//停止DMAx时钟，无需等待
 	DAC_DIS;
 	SEL_NONE;
 	//LEDOFF;
@@ -398,8 +400,20 @@ u32 next_Playptr;
 uint32_t EVAL_AUDIO_Init()
 { 
 	I2S_GPInit();
-	I2S_DMA_Init();
-	//EVAL_AUDIO_Stop();
+	
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);//使能SPI2时钟
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPI2
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,DISABLE);//结束复位
+	
+	I2S_DMA_irqInit();
+	
+	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX,ENABLE);//DMA1时钟使能 
+	RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, ENABLE);//start reset
+	RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//end reset
+	
+	
+	
+	EVAL_AUDIO_Stop();
 	return 0; 
 }
 

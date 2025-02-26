@@ -1,8 +1,8 @@
 #define	__IO	volatile
 #include "usbd_audio2_core.h"
 #include "audio_out.h"
-#include <stdio.h>
-#include <string.h>
+#include "io.h"
+
 
 #define bitdepth 32
 #define bpf (bitdepth/8*2) //byte per frame   帧字节数
@@ -219,7 +219,7 @@ static uint8_t usbd_audio_CfgDesc[AUDIO_CONFIG_DESC_SIZE] =
   0x00,                                 /* bmAttributes */
   0x00,                                 /* bmControls */
   0x00,                                 /* bLockDelayUnits */
-  0x10,                                 /* wLockDelay */
+  0x00,                                 /* wLockDelay */
   0x00,
   /* 08 byte*/
   
@@ -436,6 +436,12 @@ static void AUDIO_Req_FeatureUnit(void *pdev, USB_SETUP_REQ *req)
 }
 
 //16.16 UAC2 feedback calc from my nuc505 project
+//16.16 value,audio samples per 125us frame(1ms / 8)
+u32 fb1616(dec,fren)
+{
+return ((dec/8) << 16)+ ((fren*65536/10/8)&0xffff);
+}
+
 void fb(void)
 {
 uint32_t PlayRate;
@@ -443,7 +449,7 @@ uint32_t PlayRate;
 
 switch (working_samplerate)
 {
-
+/*
 case 384000:
 
 	if (play_speed==0)		PlayRate = (384 << 14) + (0 << 14)/10;
@@ -457,48 +463,48 @@ case 352800:
 	else if (play_speed>0)	PlayRate = (351 << 14) + (0 << 14)/10;
 	else					PlayRate = (354 << 14) + (0 << 14)/10;
 	break;		
-	
+*/	
 case 192000:
 
-	if (play_speed==0)		PlayRate = (192 << 14) + (0 << 14)/10;
-	else if (play_speed>0)	PlayRate = (191 << 14) + (0 << 14)/10;
-	else					PlayRate = (193 << 14) + (0 << 14)/10;
+	if (play_speed==0)		PlayRate = fb1616(192,0);
+	else if (play_speed>0)	PlayRate = fb1616(191,0);
+	else					PlayRate = fb1616(193,0);
 	break;
 	
 case 176400:
 
-	if (play_speed==0)		PlayRate = (176 << 14) + (4 << 14)/10;
-	else if (play_speed>0)	PlayRate = (177 << 14) + (4 << 14)/10;
-	else					PlayRate = (175 << 14) + (4 << 14)/10;
+	if (play_speed==0)		PlayRate = fb1616(176,4);
+	else if (play_speed>0)	PlayRate = fb1616(177,3);
+	else					PlayRate = fb1616(175,4);
 	break;
 	
 case 96000:
 
-	if (play_speed==0)		PlayRate = (96 << 14) + (0 << 14)/10;
-	else if (play_speed>0)	PlayRate = (97 << 14) + (0 << 14)/10;
-	else					PlayRate = (95 << 14) + (0 << 14)/10;
+	if (play_speed==0)		PlayRate = (96 << 16);
+	else if (play_speed>0)	PlayRate = (97 << 16);
+	else					PlayRate = (95 << 16);
 	break;
 	
 	
 case 88200:
 
-	if (play_speed==0)		PlayRate = (88 << 14) + (2 << 14)/10;
-	else if (play_speed>0)	PlayRate = (89 << 14) + (2 << 14)/10;
-	else					PlayRate = (87 << 14) + (2 << 14)/10;
+	if (play_speed==0)		PlayRate = (88 << 16) +((2*65536/10)&0xffff);
+	else if (play_speed>0)	PlayRate = (89 << 16) +((2*65536/10)&0xffff);
+	else					PlayRate = (87 << 16) +((2*65536/10)&0xffff);
 	break;
 	
 case 44100:
 
-	if (play_speed==0)		PlayRate = (44 << 14) + (1 << 14)/10;
-	else if (play_speed>0)	PlayRate = (45 << 14) + (1 << 14)/10;
-	else					PlayRate = (43 << 14) + (1 << 14)/10;
+	if (play_speed==0)		PlayRate = (44 << 16)+((1*65536/10)&0xffff);
+	else if (play_speed>0)	PlayRate = (45 << 16);
+	else					PlayRate = (43 << 16);
 	break;
 	
 case 48000:
 
-	if (play_speed==0)		PlayRate = (48 << 14) + (0 << 14)/10;
-	else if (play_speed>0)	PlayRate = (49 << 14) + (0 << 14)/10;
-	else					PlayRate = (47 << 14) + (0 << 14)/10;
+	if (play_speed==0)		PlayRate = (48 << 16);
+	else if (play_speed>0)	PlayRate = (49 << 16);
+	else					PlayRate = (47 << 16);
 	break;
 	
 default:
@@ -506,9 +512,7 @@ default:
 	
 }
 
-play_speed=0;
-
-PlayRate =	PlayRate /2;	//make 16.16 format
+//play_speed=0;
 
 	fb_buf[0]=PlayRate & 0xff;
 	fb_buf[1]=(PlayRate>>8) & 0xff;
@@ -888,6 +892,13 @@ fb_incomplt++;
   */
 static uint8_t  usbd_audio_OUT_Incplt (void  *pdev)
 {
+    /* Toggle the frame index */  
+    ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[AUDIO_OUT_EP].even_odd_frame = (((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[AUDIO_OUT_EP].even_odd_frame)? 0:1;
+      
+    //设定OUT端点准备接受下一数据包
+    DCD_EP_PrepareRx(pdev,AUDIO_OUT_EP,(uint8_t*)IsocOutBuff,AUDIO_OUT_PKTSIZE);   
+
+
 rx_incomplt++;
   return USBD_OK;
 }

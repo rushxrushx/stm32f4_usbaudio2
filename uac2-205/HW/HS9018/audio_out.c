@@ -1,15 +1,15 @@
-#include "usbd_audio_core.h"
-#include "gpio.h"
-#include "spi1.h"
+#include "io.h"
+#include "usbd_audio2_core.h"
 #include "audio_out.h"
  
 vu8 audiostatus=0;							//bit0:0,暂停播放;1,继续播放  
 vu32 working_samplerate=44100;	//当前采样频率 
-vu16 Play_ptr=0;								//即将播放的音频帧缓冲编号
-vu16 Write_ptr=0;							//当前保存到的音频缓冲编号 
+vu32 Play_ptr=0;								//即将播放的音频帧缓冲编号
+vu32 Write_ptr=0;							//当前保存到的音频缓冲编号 
 u32 underrun_counter=0;
-u32 const i2s_BUFSIZE=4000;								
-u32 i2s_buf[i2s_BUFSIZE+2]; 	//音频缓冲
+u32 const i2s_BUFSIZEMX=4000;	
+vu32 i2s_BUFSIZE=4000;								
+u32 i2s_buf[i2s_BUFSIZEMX+2]; 	//音频缓冲
 void audio_i2s_dma_callback(void);
 
 
@@ -31,12 +31,12 @@ u32 i2sclk;
 
 ////双时钟控制  
 	if((I2S_InitStruct->I2S_AudioFreq)%44100 ==0){
-	SEL_22;	
-	i2sclk=22579200;
+	SEL_441;	
+	i2sclk=45158400;
 	} 
 	else {
-	SEL_24;
-	i2sclk=24576000;
+	SEL_480;
+	i2sclk=49152000;
 	}
 
 /*----------------------- SPIx I2SCFGR & I2SPR Configuration -----------------*/
@@ -63,34 +63,34 @@ u32 i2sclk;
     if(I2S_InitStruct->I2S_MCLKOutput == I2S_MCLKOutput_Enable)
     {
       /* MCLK output is enabled */
-      tmp = (uint16_t)(((((i2sclk / 256) * 10) / I2S_InitStruct->I2S_AudioFreq)) + 5);
+      tmp = (uint16_t)((((i2sclk / 256)  / I2S_InitStruct->I2S_AudioFreq)) + 0);
     }
     else
     {
       /* MCLK output is disabled */
-      tmp = (uint16_t)(((((i2sclk / (32 * packetlength)) *10 ) / I2S_InitStruct->I2S_AudioFreq)) + 5);
+      tmp = (uint16_t)((((i2sclk / (32 * packetlength)) / I2S_InitStruct->I2S_AudioFreq)) + 0);
     }
     
     /* Remove the flatting point */
-    tmp = tmp / 10;  
+    //tmp = tmp / 1;  
       
     /* Check the parity of the divider */
-    i2sodd = (uint16_t)(tmp & (uint16_t)0x0001);
+    i2sodd = 0;
    
     /* Compute the i2sdiv prescaler */
     i2sdiv = (uint16_t)((tmp - i2sodd) / 2);
    
     /* Get the Mask for the Odd bit (SPI_I2SPR[8]) register */
-    i2sodd = (uint16_t) (i2sodd << 8);
+   // i2sodd = (uint16_t) (i2sodd << 8);
 
 
   /* Test if the divider is 1 or 0 or greater than 0xFF */
-  if ((i2sdiv < 2) || (i2sdiv > 0xFF))
-  {
+ // if ((i2sdiv < 2) || (i2sdiv > 0xFF))
+  //{
     /* Set the default values */
-    i2sdiv = 2;
-    i2sodd = 0;
-  }
+  //  i2sdiv = 2;
+  //  i2sodd = 0;
+ // }
 
   /* Write to SPIx I2SPR register the computed value */
   SPIx->I2SPR = (uint16_t)((uint16_t)i2sdiv | (uint16_t)(i2sodd | (uint16_t)I2S_InitStruct->I2S_MCLKOutput));
@@ -107,9 +107,9 @@ u32 i2sclk;
 
 
 
-#ifndef USE_USB_OTG_HS 
 // FS usb,401 chip,
 // spi2 is avliable
+#ifdef USE_USB_OTG_FS 
 void I2S_GPInit(void)
 {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -167,7 +167,7 @@ void I2S_Reconf(uint32_t samplerate)
 
 
 // spi2 DMA1_Stream4
-#define AUDIO_I2S_DMA_CLOCK     RCC_AHB1Periph_DMA1
+#define AUDIO_I2S_DMA_DMAX     RCC_AHB1Periph_DMA1
 #define AUDIO_I2S_DMA_STREAM    DMA1_Stream4
 #define AUDIO_I2S_DMA_CHANNEL   DMA_Channel_0
 #define AUDIO_I2S_DMA_IRQ       DMA1_Stream4_IRQn
@@ -187,10 +187,11 @@ void DMA1_Stream4_IRQHandler(void)
 }
 
 	
-#else
+#endif
+
 // 205 chip with usb3300 HS usb
 // spi2 not aviliable,must change to spi3 
-
+#ifdef USE_USB_OTG_HS 
 void I2S_GPInit(void)//spi3 gpio
 {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -237,10 +238,8 @@ void I2S_Reconf(uint32_t samplerate)
 {
 	I2S_InitTypeDef I2S_InitStructure;
 	
-
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);//使能SPI2时钟
-	
-	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPI2
+	//RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);//使能SPIx时钟
+	//RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPIx
 	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,DISABLE);//结束复位
   
 	I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
@@ -252,13 +251,13 @@ void I2S_Reconf(uint32_t samplerate)
 	I2S_Init_E(SPI3,&I2S_InitStructure);//初始化IIS
 
  
-	SPI_I2S_DMACmd(SPI3,SPI_I2S_DMAReq_Tx,ENABLE);//SPI2 TX DMA请求使能.
-	I2S_Cmd(SPI3,ENABLE);//SPI2 I2S EN使能.
+	SPI_I2S_DMACmd(SPI3,SPI_I2S_DMAReq_Tx,ENABLE);//SPIx TX DMA请求使能.
+	I2S_Cmd(SPI3,ENABLE);//I2Sx 使能.
 	
 }
 
 // SPI3 DMA1_Stream7
-#define AUDIO_I2S_DMA_CLOCK     RCC_AHB1Periph_DMA1
+#define AUDIO_I2S_DMA_DMAX     RCC_AHB1Periph_DMA1
 #define AUDIO_I2S_DMA_STREAM    DMA1_Stream7
 #define AUDIO_I2S_DMA_CHANNEL   DMA_Channel_0
 #define AUDIO_I2S_DMA_IRQ       DMA1_Stream7_IRQn
@@ -280,28 +279,32 @@ void DMA1_Stream7_IRQHandler(void)
 #endif
 
 
-//I2S TX DMA NVIC配置
-void I2S_DMA_Init()
+//I2S DMA IRQ配置
+void I2S_DMA_irqInit()
 {  
 	NVIC_InitTypeDef   NVIC_InitStructure;
 		
 	NVIC_InitStructure.NVIC_IRQChannel = AUDIO_I2S_DMA_IRQ; 
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;//抢占优先级0
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;//子优先级0
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;//抢占优先级0-4
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;//顺序优先级0-4
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;//使能外部中断通道
 	NVIC_Init(&NVIC_InitStructure);//配置
 
 } 	
 
-//I2S2 TX DMA配置
+//I2S2 DMA配置
 void I2S2_DMA_Reconf()
 {  
+u32 i=0;
 	DMA_InitTypeDef  DMA_InitStructure;
 	
-	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_CLOCK,ENABLE);//DMA1时钟使能 
+	//RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX,ENABLE);//DMA1时钟使能 
+	//RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, ENABLE);//start reset
+	//RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//end reset
 	
 	DMA_DeInit(AUDIO_I2S_DMA_STREAM);
-	while (DMA_GetCmdStatus(AUDIO_I2S_DMA_STREAM) != DISABLE){}//等待DMA1_Stream1可配置 
+	while (DMA_GetCmdStatus(AUDIO_I2S_DMA_STREAM) != DISABLE)
+		{i++;if (i>100000){printf("init DMA timeout!\r\n");}}//等待DMA可配置 
 
   DMA_InitStructure.DMA_Channel = AUDIO_I2S_DMA_CHANNEL;  //通道0 SPI3_TX通道 
   DMA_InitStructure.DMA_PeripheralBaseAddr = AUDIO_I2S_SPI_ADDR;//外设地址
@@ -311,7 +314,7 @@ void I2S2_DMA_Reconf()
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;//外设非增量模式
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;//存储器增量模式
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;//外设数据长度:16位
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;//存储器数据长度：32位 
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;//存储器数据长度：32位 
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;// 非循环模式 
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;//高优先级
   DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable; //使用FIFO模式        
@@ -337,7 +340,7 @@ void EVAL_AUDIO_Play(void)
 	DMA_Cmd(AUDIO_I2S_DMA_STREAM,ENABLE);
 	I2S_Reconf(working_samplerate);
 	DAC_EN;
-	LEDON;
+	//LEDON;
 	audiostatus=1;
 }
  
@@ -345,10 +348,15 @@ void EVAL_AUDIO_Play(void)
 //DMA停止播放
 void EVAL_AUDIO_Stop(void)
 {
-	RCC_APB1PeriphClockCmd(AUDIO_I2S_SPI_SPIX, DISABLE);//停止SPI2时钟，无需等待
-	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_CLOCK,DISABLE);//停止DMA1时钟，无需等待
+I2S_Cmd(SPI3,DISABLE);
+DMA_Cmd(AUDIO_I2S_DMA_STREAM,DISABLE);
+
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPIx
+	//RCC_APB1PeriphClockCmd(AUDIO_I2S_SPI_SPIX, DISABLE);//停止SPIx时钟，无需等待
+	//RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//停止DMAx时钟，无需等待
 	DAC_DIS;
-	LEDOFF;
+	SEL_NONE;
+	//LEDOFF;
 	audiostatus=0;
 	if (alt_setting_now==0){overrun_counter=0;underrun_counter=0;}
 }
@@ -357,7 +365,7 @@ void EVAL_AUDIO_Stop(void)
 //音频数据I2S DMA传输回调函数
 void audio_i2s_dma_callback(void) 
 { 
-u16 next_Playptr;
+u32 next_Playptr;
 
 	DMA_Cmd(AUDIO_I2S_DMA_STREAM,DISABLE);//关闭DMA才能修改
 
@@ -391,7 +399,19 @@ u16 next_Playptr;
 uint32_t EVAL_AUDIO_Init()
 { 
 	I2S_GPInit();
-	I2S_DMA_Init();
+	
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);//使能SPI2时钟
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,ENABLE); //复位SPI2
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3,DISABLE);//结束复位
+	
+	I2S_DMA_irqInit();
+	
+	RCC_AHB1PeriphClockCmd(AUDIO_I2S_DMA_DMAX,ENABLE);//DMA1时钟使能 
+	RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, ENABLE);//start reset
+	RCC_AHB1PeriphResetCmd(AUDIO_I2S_DMA_DMAX, DISABLE);//end reset
+	
+	
+	
 	EVAL_AUDIO_Stop();
 	return 0; 
 }

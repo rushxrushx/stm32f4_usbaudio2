@@ -30,7 +30,7 @@
 #define _CMB_CFG_H_
 
 /* print line, must config by user */
-#define cmb_println(...)               printf(__VA_ARGS__);printf("\r\n");
+#define cmb_println(...)               printf((char*)__VA_ARGS__);printf("\r\n");
 /* enable bare metal(no OS) platform */
 #define CMB_USING_BARE_METAL_PLATFORM
 /* enable OS platform */
