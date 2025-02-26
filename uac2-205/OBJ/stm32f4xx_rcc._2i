@@ -1,6 +1,0 @@
---c99 -c --cpu Cortex-M4.fp -D__EVAL -g -O2 -Otime --apcs=interwork --split_sections -I.\HW\HS9018 -I.\CMBT -ICORE -IUSER -I.\lib -IFWLIB\inc -IOTGLIB\STM32_USB_OTG_Driver\inc -IOTGLIB\STM32_USB_Device_Library\Core\inc
--I D:\EDA\MDK474\ARM\RV31\INC
--I D:\EDA\MDK474\ARM\CMSIS\Include
--I D:\EDA\MDK474\ARM\Inc\ST\STM32F4xx
--DSTM32F40_41xxx -DSTM32F4XX -DUSE_STDPERIPH_DRIVER -DUSE_USB_OTG_HS -DUSE_ULPI_PHY -DSTM32F40_41xxx
--o .\obj\stm32f4xx_rcc.o --depend .\obj\stm32f4xx_rcc.d --feedback ".\OBJ\HS.fed" "FWLIB\src\stm32f4xx_rcc.c"

@@ -26,4 +26,5 @@ del *.map /s
 del  *.uvgui.*
 del *.dfu /s
 del *.hex /s
+del /f /s /q .\obj\*.*
 exit

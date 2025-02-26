@@ -437,7 +437,7 @@ static void AUDIO_Req_FeatureUnit(void *pdev, USB_SETUP_REQ *req)
 
 //16.16 UAC2 feedback calc from my nuc505 project
 //16.16 value,audio samples per 125us frame(1ms / 8)
-u32 fb1616(dec,fren)
+u32 fb1616(u32 dec,u32 fren)
 {
 return ((dec/8) << 16)+ ((fren*65536/10/8)&0xffff);
 }
@@ -480,31 +480,31 @@ case 176400:
 	
 case 96000:
 
-	if (play_speed==0)		PlayRate = (96 << 16);
-	else if (play_speed>0)	PlayRate = (97 << 16);
-	else					PlayRate = (95 << 16);
+	if (play_speed==0)		PlayRate = fb1616(96,0);
+	else if (play_speed>0)	PlayRate = fb1616(97,0);
+	else					PlayRate = fb1616(95,0);
 	break;
 	
 	
 case 88200:
 
-	if (play_speed==0)		PlayRate = (88 << 16) +((2*65536/10)&0xffff);
-	else if (play_speed>0)	PlayRate = (89 << 16) +((2*65536/10)&0xffff);
-	else					PlayRate = (87 << 16) +((2*65536/10)&0xffff);
+	if (play_speed==0)		PlayRate = fb1616(88,2);
+	else if (play_speed>0)	PlayRate = fb1616(89,1);
+	else					PlayRate = fb1616(87,2);
 	break;
 	
 case 44100:
 
-	if (play_speed==0)		PlayRate = (44 << 16)+((1*65536/10)&0xffff);
-	else if (play_speed>0)	PlayRate = (45 << 16);
-	else					PlayRate = (43 << 16);
+	if (play_speed==0)		PlayRate = fb1616(44,1);
+	else if (play_speed>0)	PlayRate = fb1616(45,0);
+	else					PlayRate = fb1616(43,1);
 	break;
 	
 case 48000:
 
-	if (play_speed==0)		PlayRate = (48 << 16);
-	else if (play_speed>0)	PlayRate = (49 << 16);
-	else					PlayRate = (47 << 16);
+	if (play_speed==0)		PlayRate = fb1616(48,0);
+	else if (play_speed>0)	PlayRate = fb1616(49,0);
+	else					PlayRate = fb1616(47,0);
 	break;
 	
 default:
