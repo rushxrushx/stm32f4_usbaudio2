@@ -437,9 +437,24 @@ static void AUDIO_Req_FeatureUnit(void *pdev, USB_SETUP_REQ *req)
 
 //16.16 UAC2 feedback calc from my nuc505 project
 //16.16 value,audio samples per 125us frame(1ms / 8)
-u32 fb1616(u32 dec,u32 fren)
-{
-return ((dec/8) << 16)+ ((fren*65536/10/8)&0xffff);
+// 将十进制数转换为16.16格式
+u32 fb1616(float decimal) {
+
+decimal=decimal/8;//for 125us
+
+  // 提取整数部分
+  u32 integer_part = (u32)decimal;
+
+  // 提取小数部分
+  float fractional_part = decimal - integer_part;
+
+  // 将小数部分转换为16位定点数
+  u16 fractional_16_bits = (u16)(fractional_part * 65536); // 2^16
+
+  // 将整数部分和小数部分合并为32位整数
+  u32 result = ((u32)integer_part << 16) | (fractional_16_bits & 0xffff);
+
+  return result;
 }
 
 void fb(void)
@@ -466,45 +481,45 @@ case 352800:
 */	
 case 192000:
 
-	if (play_speed==0)		PlayRate = fb1616(192,0);
-	else if (play_speed>0)	PlayRate = fb1616(191,0);
-	else					PlayRate = fb1616(193,0);
+	if (play_speed==0)		PlayRate = fb1616(192.0);
+	else if (play_speed>0)	PlayRate = fb1616(191.0);
+	else					PlayRate = fb1616(193.0);
 	break;
 	
 case 176400:
 
-	if (play_speed==0)		PlayRate = fb1616(176,4);
-	else if (play_speed>0)	PlayRate = fb1616(177,3);
-	else					PlayRate = fb1616(175,4);
+	if (play_speed==0)		PlayRate = fb1616(176.4);
+	else if (play_speed>0)	PlayRate = fb1616(177.3);
+	else					PlayRate = fb1616(175.4);
 	break;
 	
 case 96000:
 
-	if (play_speed==0)		PlayRate = fb1616(96,0);
-	else if (play_speed>0)	PlayRate = fb1616(97,0);
-	else					PlayRate = fb1616(95,0);
+	if (play_speed==0)		PlayRate = fb1616(96.0);
+	else if (play_speed>0)	PlayRate = fb1616(97.0);
+	else					PlayRate = fb1616(95.0);
 	break;
 	
 	
 case 88200:
 
-	if (play_speed==0)		PlayRate = fb1616(88,2);
-	else if (play_speed>0)	PlayRate = fb1616(89,1);
-	else					PlayRate = fb1616(87,2);
+	if (play_speed==0)		PlayRate = fb1616(88.2);
+	else if (play_speed>0)	PlayRate = fb1616(89.1);
+	else					PlayRate = fb1616(87.2);
 	break;
 	
 case 44100:
 
-	if (play_speed==0)		PlayRate = fb1616(44,1);
-	else if (play_speed>0)	PlayRate = fb1616(45,0);
-	else					PlayRate = fb1616(43,1);
+	if (play_speed==0)		PlayRate = fb1616(44.1);
+	else if (play_speed>0)	PlayRate = fb1616(44.9);
+	else					PlayRate = fb1616(43.3);
 	break;
 	
 case 48000:
 
-	if (play_speed==0)		PlayRate = fb1616(48,0);
-	else if (play_speed>0)	PlayRate = fb1616(49,0);
-	else					PlayRate = fb1616(47,0);
+	if (play_speed==0)		PlayRate = fb1616(48.0);
+	else if (play_speed>0)	PlayRate = fb1616(48.9);
+	else					PlayRate = fb1616(47.1);
 	break;
 	
 default:
@@ -628,15 +643,16 @@ static uint8_t  usbd_audio_Setup (void  *pdev,
 						Write_ptr=0;
 						DCD_EP_Open(pdev, AUDIO_OUT_EP, AUDIO_OUT_PKTSIZE, USB_OTG_EP_ISOC);
 						DCD_EP_Open(pdev, AUDIO_IN_EP, 4, USB_OTG_EP_ISOC);
-						//DCD_EP_Flush(pdev,AUDIO_IN_EP);
+						DCD_EP_Flush(pdev,AUDIO_IN_EP);
 						DCD_EP_PrepareRx(pdev , AUDIO_OUT_EP , (uint8_t*)IsocOutBuff , AUDIO_OUT_PKTSIZE ); 
-						fb();
+						//fb();
 			
 				break;
 			case 0 :	//zero bandwidth
 						alt_setting_now=0;
 						DCD_EP_Close (pdev , AUDIO_OUT_EP);
 						DCD_EP_Close (pdev , AUDIO_IN_EP);
+						DCD_EP_Flush(pdev,AUDIO_IN_EP);
 			
 				break;
 			default:
